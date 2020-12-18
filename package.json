@@ -1,0 +1,35 @@
+{
+  "name": "node-red-contrib-liogateway",
+  "version": "0.0.0",
+  "description": "lio-gateway.",
+  "main": "src/lio-gateway.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "node-red": {
+    "nodes": {
+      "liogateway": "src/lio-gateway.js"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lio-solution/node-red-contrib-liogateway.git"
+  },
+  "author": "Naotaka Saito",
+  "gypfile": true,
+  "bugs": {
+    "url": "https://github.com/lio-solution/node-red-contrib-liogateway/issues"
+  },
+  "keywords": [
+    "node-red",
+    "Lazurite"
+  ],
+  "dependencies": {
+    "lazurite": "^0.1.1",
+    "mqtt": "^4.2.1"
+  },
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/lio-solution/node-red-contrib-liogteway#readme",
+  "devDependencies": {
+  }
+}
