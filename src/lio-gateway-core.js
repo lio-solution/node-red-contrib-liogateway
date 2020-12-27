@@ -21,10 +21,10 @@
 
 let local = {};
 module.exports = function(RED,node){
-	const fs = require("fs");
-	const os = require("os");
+	//const fs = require("fs");
+	//const os = require("os");
 	const https = require("https");
-	const util = require("util");
+	//const util = require("util");
 	const mqtt = require("./mqtt");
 	const lazurite = require("./lazurite");
 	if(node.connecting === undefined) node.connecting =  false;
@@ -77,33 +77,40 @@ module.exports = function(RED,node){
 	});
 
 	function init() {
-		getApiKeyAndDeviceInfo()
-			.then(httpRequestGatewayConnect)
-			.then(() => {
-				return Promise.all([
-					node.mqtt.auth(local.Keys),
-					httpRequestGatewayMachine()
-				]);
-			}).then(() => {
-				return new Promise((resolve,reject) => {
-					let rf = local.Keys.config.rf.find((elm) => elm.type === "lazurite");
-					if(rf) {
-						node.devices.lazurite.setup(rf);
-						resolve();
-					} else {
-						reject("can not find lazurite config");
-					}
+		new Promise((resolve,reject) => {
+			const mac64 = node.devices.lazurite.init();
+			resolve({config: { lazurite: mac64}});
+		}).then(httpRequestGatewayActivate)
+			.then((val) => {
+				return node.mqtt.auth(local.Keys).then((resolve,reject) => {
+					return Promise.resolve(val);
 				});
+			}).then(httpRequestGatewayDevices)
+			.then(() => {
+				return Promise.resolve();
+
+				/* dummy
+				return new Promise((resolve,reject) => {
+						node.devices.lazurite.setup(local.Keys.connect.lazurite);
+						resolve();
+				*/
 			}).then(() => {
 				node.connecting = false;
 				node.connected = true;
-				node.mqtt.subscribe("dbupdate",function(topic,message){
+				node.mqtt.subscribe("event/dbupdate",function(topic,message){
+					console.log({
+						topic:topic,
+						message: message
+					});
 					if(message.type === "machine") {
 						updateDatabase();
 					}
 				});
 				for(let id in node.users) {
 					node.users[id].status({fill:"green",shape:"dot",text:"node-red:common.status.connected"});
+					if(node.users[id].registered) {
+						node.users[id].registered();
+					}
 				}
 				console.log("完了しました(completed)!!");
 			}).catch((err) => {
@@ -117,55 +124,21 @@ module.exports = function(RED,node){
 				}
 			});
 	}
-
-	function getApiKeyAndDeviceInfo() {
-		return new Promise((resolve,reject) => {
-			console.log("デバイス情報を取得中です(collecting device information)......");
-			if(fs.existsSync(node.config.keyPath) === false) {
-				reject(`keyPath is not found`);
-				return;
-			}
-			try {
-				let Body = fs.readFileSync(node.config.keyPath,'utf-8');
-				var key = JSON.parse(Body);
-				if(!key.apiKey) {
-					reject("invalid key");
-					return;
-				}
-			} catch(e) {
-				console.log(e);
-				reject(`invalid key. ${JSON.stringify(e)}`);
-				return;
-			}
-			const ni = os.networkInterfaces()["wwan0"];
-			const subghz = node.devices.lazurite.init();
-
-			local.auth = {
-				apiKey : key.apiKey
-			}
-			if(ni) {
-				local.auth.soracom = ni;
-			}
-			if(subghz) {
-				local.auth.subghz = subghz.substr(-16);
-			}
-			resolve();
-		});
-	}
-	function httpRequestGatewayConnect() {
+	function httpRequestGatewayActivate(val) {
 		return new Promise((resolve,reject) => {
 			console.log("認証情報を取得中です(getting credentials)......");
 			for(let id in node.users) {
 				node.users[id].status({fill:"yellow",shape:"ring",text:"node-red:common.status.connecting"});
 			}
 			const options = {
-				hostname: 'test2.lazurite.io',
+				hostname: 'api.lio-solution.com',
 				port: 443,
-				path: '/v2/gateway/connect',
+				path: `/gateway/activate?authMethod=lazurite&deviceId=${val.config.lazurite}`,
 				headers: {
 					'Content-Type': 'application/json',
+					'access_key': node.config.access_key,
 				},
-				method: 'POST'
+				method: 'GET'
 			};
 			const req = https.request(options, (res) => {
 				let Body = "";
@@ -174,8 +147,8 @@ module.exports = function(RED,node){
 				});
 				res.on('end',() => {
 					if(res.statusCode === 200) {
-						local.Keys = JSON.parse(Body).Item;
-						resolve();
+						local.Keys = JSON.parse(Body);
+						resolve(val);
 					} else {
 						reject({
 							file: module.filename.split("/").pop(),
@@ -194,17 +167,18 @@ module.exports = function(RED,node){
 			req.end();
 		});
 	}
-	function httpRequestGatewayMachine() {
+	function httpRequestGatewayDevices(val) {
 		return new Promise((resolve,reject) => {
 			console.log("センサーデバイス情報を取得中です。(downloading sensor device list)......");
 			const options = {
-				hostname: 'test2.lazurite.io',
+				hostname: 'api.lio-solution.com',
 				port: 443,
-				path: '/v2/gateway/machine',
+				path: `/gateway/devices?authMethod=lazurite&deviceId=${val.config.lazurite}`,
 				headers: {
 					'Content-Type': 'application/json',
+					'access_key': node.config.access_key,
 				},
-				method: 'POST'
+				method: 'GET'
 			};
 			const req = https.request(options, (res) => {
 				let Body = "";
@@ -213,7 +187,7 @@ module.exports = function(RED,node){
 				});
 				res.on('end',() => {
 					if(res.statusCode === 200) {
-						node.db = JSON.parse(Body.toString()).Items;
+						node.devices = JSON.parse(Body.toString());
 						resolve();
 					} else {
 						reject({

@@ -21,8 +21,9 @@
 
 module.exports = (RED,node) => {
 	node.core = RED.nodes.getNode(node.config.core);
-	node.core.register(node);
-	node.core.mqtt.subscribe(node.config.topic,onMessage)
+	node.registered = function() {
+		node.core.mqtt.subscribe(`custom/${node.config.topic}`,onMessage)
+	}
 	function onMessage(topic,message) {
 		node.send({
 			topic: topic,
@@ -33,5 +34,6 @@ module.exports = (RED,node) => {
 		node.core.deregister(node);
 		done();
 	});
+	node.core.register(node);
 }
 

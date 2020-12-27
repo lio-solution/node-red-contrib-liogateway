@@ -7,38 +7,28 @@ module.exports = function(RED,node) {
 	node.mqtt.auth = function(v) {
 		return new Promise((resolve,reject) => {
 			try {
-				const ca = Buffer.from(v["root-ca.pem"]);
-				const cert = Buffer.from(v["cert.pem"]);
-				const key = Buffer.from(v["private.key"]);
+				const ca = Buffer.from(v["RootCA"]);
+				const cert = Buffer.from(v["CertificatePem"]);
+				const key = Buffer.from(v["PrivateKey"]);
+				baseTopic = v.connect.topic;
 				const options = {
-					clientId: `${v.config.name}_nodered`,
+					clientId: `${v.connect.id}_nodered`,
 					ca: ca,
 					cert: cert,
 					key: key,
 				};
-				baseTopic = v.config.topic;
 				node.mqtt.connecting = true;
 				node.mqtt.connected = false;
-				client = mqtt.connect(v.config.broker,options);
+				client = mqtt.connect(v.connect.broker,options);
 				client.on('connect', function () {
 					node.mqtt.connecting = false;
 					node.mqtt.connected = true;
-					const topic = `${v.config.topic}/event/#`;
-					client.subscribe(topic,{qos: 1},function (err) {
-						if(err) {
-							console.log(err);
-							try {
-								RED.log.warn(JSON.stringify(err,null,"  "));
-							} catch(e) {
-								RED.log.warn(err);
-							}
-						}
-					});
 					node.done.push(node.mqtt.done);
 					resolve();
 				});
-				client.on('reconnect', function () {
+				client.on('reconnect', function (e) {
 					console.log(`mqtt.reconnect`);
+					console.log(e);
 					node.mqtt.connecting = false;
 					node.mqtt.connected = true;
 				});
@@ -59,7 +49,7 @@ module.exports = function(RED,node) {
 					t.splice(0,2);
 					t = t.join("/");
 					for(let l of node.mqtt.listener) {
-						if(matchTopic(t,l.topic) === true) {
+						if(matchTopic(l.topic,t) === true) {
 							l.callback(t,msg);
 						}
 					}
@@ -92,14 +82,21 @@ module.exports = function(RED,node) {
 		});
 	};
 	node.mqtt.publish = function(msg,callback) {
-		if(baseTopic) {
-			let message = (typeof msg.payload === "object") ? JSON.stringify(msg.payload) : msg.payload;
-			client.publish(`${baseTopic}/${msg.topic}`,message,msg.options,callback);
-		} else {
-			callback("undefined base topic");
-		}
+		let message = (typeof msg.payload === "object") ? JSON.stringify(msg.payload) : msg.payload;
+		client.publish(`${baseTopic}/${msg.topic}`,message,msg.options,callback);
 	};
 	node.mqtt.subscribe = function(topic,callback) {
+		client.subscribe(`${baseTopic}/${topic}`,{qos: 1},function (err) {
+			console.log(`subscribe: ${baseTopic}/${topic}`);
+			if(err) {
+				console.log(err);
+				try {
+					RED.log.warn(JSON.stringify(err,null,"  "));
+				} catch(e) {
+					RED.log.warn(err);
+				}
+			}
+		});
 		node.mqtt.listener.push({
 			topic : topic,
 			callback: callback
@@ -147,4 +144,4 @@ function matchTopic(ts,t) {
 	}
 	var re = new RegExp("^"+ts.replace(/([\[\]\?\(\)\\\\$\^\*\.|])/g,"\\$1").replace(/\+/g,"[^/]+").replace(/\/#$/,"(\/.*)?")+"$");
 			return re.test(t);
-		}
+}

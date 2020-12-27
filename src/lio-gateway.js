@@ -20,44 +20,45 @@
  */
 
 module.exports = function (RED) {
-	function LazuriteIotDeviceIn(config) {
+	function LioGatewayDeviceIn(config) {
 		RED.nodes.createNode(this,config);
 		let node = this;
 		node.config = config;
-		require("./lazurite-iot-device-in")(RED,node);
+		require("./lio-gateway-device-in")(RED,node);
 	}
-	RED.nodes.registerType("lazurite-iot-device-in",LazuriteIotDeviceIn);
+	RED.nodes.registerType("lio-gateway-device-in",LioGatewayDeviceIn);
 
-	function LazuriteIotDeviceOut(config) {
+	function LioGatewayDeviceOut(config) {
 		RED.nodes.createNode(this,config);
 		let node = this;
 		node.config = config;
-		require("./lazurite-iot-device-out")(RED,node);
+		require("./lio-gateway-device-out")(RED,node);
 	}
-	RED.nodes.registerType("lazurite-iot-device-out",LazuriteIotDeviceOut);
+	RED.nodes.registerType("lio-gateway-device-out",LioGatewayDeviceOut);
 
-	function LazuriteIotMqttOut(config) {
+	function LioGatewayMqttOut(config) {
 		RED.nodes.createNode(this,config);
 		let node = this;
 		node.config = config;
-		require("./lazurite-iot-mqtt-out")(RED,node);
+		require("./lio-gateway-mqtt-out")(RED,node);
 	}
-	RED.nodes.registerType("lazurite-iot-mqtt-out",LazuriteIotMqttOut);
+	RED.nodes.registerType("lio-gateway-mqtt-out",LioGatewayMqttOut);
 
-	function LazuriteIotMqttIn(config) {
+	function LioGatewayMqttIn(config) {
 		RED.nodes.createNode(this,config);
 		let node = this;
 		node.config = config;
-		require("./lazurite-iot-mqtt-in")(RED,node);
+		const func = require("./lio-gateway-mqtt-in");
+		func(RED,node);
 	}
-	RED.nodes.registerType("lazurite-iot-mqtt-in",LazuriteIotMqttIn);
+	RED.nodes.registerType("lio-gateway-mqtt-in",LioGatewayMqttIn);
 
-	function LazuriteIotCore(config) {
+	function LioGatewayCore(config) {
 		RED.nodes.createNode(this,config);
 		let node = this;
 		node.config = config;
-		require("./lazurite-iot-core")(RED,node);
+		require("./lio-gateway-core")(RED,node);
 	}
-	RED.nodes.registerType("lazurite-iot-core",LazuriteIotCore);
+	RED.nodes.registerType("lio-gateway-core",LioGatewayCore);
 }
 

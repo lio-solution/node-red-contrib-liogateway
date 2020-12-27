@@ -19,80 +19,80 @@
  *
 !-->
 
-<script type="text/x-red" data-template-name="lazurite-iot-device-in">
+<script type="text/x-red" data-template-name="lio-gateway-device-in">
 	<div class="form-row">
 		<label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
 		<input type="text" id="node-input-name">
 	</div>
 	<div class="form-row">
 		<label for="node-input-core"><i class="fa fa-diamond"></i> channel</label>
-		<input type="lazurite-iot-core" id="node-input-core"></input>
+		<input type="lio-gateway-core" id="node-input-core"></input>
 	</div>
 
 </script>
 <script type="text/javascript">
-	RED.nodes.registerType('lazurite-iot-device-in',{
-		category: 'Lazurite',
-		paletteLabel: 'LazuriteIot Device In',
+	RED.nodes.registerType('lio-gateway-device-in',{
+		category: 'network',
+		paletteLabel: 'Lazurite Device In',
 		color:"#3FADB5",
 		align: 'left',
 		inputs:0,
 		outputs:1,
 		icon: "lazurite.png",
 		label: function() {
-			return this.name || "LazuriteIot Device In";
+			return this.name || "Lazurite Device In";
 		},
 		labelStyle: function() {
 			return this.text?"node_label_italic":"";
 		},
 		defaults: {
-			core: {value:"", required:true, type:"lazurite-iot-core"},
+			core: {value:"", required:true, type:"lio-gateway-core"},
 			name   : {value:""}
 		}
 	});
 </script>
 
-<script type="text/x-red" data-template-name="lazurite-iot-device-out">
+<script type="text/x-red" data-template-name="lio-gateway-device-out">
 	<div class="form-row">
 		<label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
 		<input type="text" id="node-input-name">
 	</div>
 	<div class="form-row">
 		<label for="node-input-core"><i class="fa fa-diamond"></i> channel</label>
-		<input type="lazurite-iot-core" id="node-input-core"></input>
+		<input type="lio-gateway-core" id="node-input-core"></input>
 	</div>
 
 </script>
 <script type="text/javascript">
-	RED.nodes.registerType('lazurite-iot-device-out',{
-		category: 'Lazurite',
-		paletteLabel: 'LazuriteIot Device Out',
+	RED.nodes.registerType('lio-gateway-device-out',{
+		category: 'network',
+		paletteLabel: 'Lazurite Device Out',
 		color:"#3FADB5",
 		align: 'right',
 		inputs:1,
 		outputs:1,
 		icon: "lazurite.png",
 		label: function() {
-			return this.name || "LazuriteIot Device Out";
+			return this.name || "Lazurite Device Out";
 		},
 		labelStyle: function() {
 			return this.text?"node_label_italic":"";
 		},
 		defaults: {
-			core: {value:"", required:true, type:"lazurite-iot-core"},
+			core: {value:"", required:true, type:"lio-gateway-core"},
 			name   : {value:""}
 		}
 	});
 </script>
 
-<script type="text/x-red" data-template-name="lazurite-iot-mqtt-in">
+<script type="text/x-red" data-template-name="lio-gateway-mqtt-in">
 	<div class="form-row">
 		<label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
 		<input type="text" id="node-input-name">
 	</div>
 	<div class="form-row">
 		<label for="node-input-core"><i class="fa fa-diamond"></i> channel</label>
-		<input type="lazurite-iot-core" id="node-input-core"></input>
+		<input type="lio-gateway-core" id="node-input-core"></input>
 	</div>
 	<div class="form-row">
 		<label for="node-input-qos"><i class="fa fa-empire"></i> qos</label>
@@ -107,22 +107,22 @@
 	</div>
 </script>
 <script type="text/javascript">
-	RED.nodes.registerType('lazurite-iot-mqtt-in',{
-		category: 'Lazurite',
-		paletteLabel: 'LazuriteIot MQTT In',
+	RED.nodes.registerType('lio-gateway-mqtt-in',{
+		category: 'network',
+		paletteLabel: 'LioGateway MQTT In',
 		color:"#d8bfd8",
 		align: 'left',
 		inputs:0,
 		outputs:1,
 		icon: "bridge.svg",
 		label: function() {
-			return this.name || "LazuriteIot MQTT In";
+			return this.name || "LioGateway MQTT In";
 		},
 		labelStyle: function() {
 			return this.text?"node_label_italic":"";
 		},
 		defaults: {
-			core: {value:"", required:true, type:"lazurite-iot-core"},
+			core: {value:"", required:true, type:"lio-gateway-core"},
 			topic: {value:"",required:true,validate: RED.validators.regex(/^(#$|(\+|[^+#]*)(\/(\+|[^+#]*))*(\/(\+|#|[^+#]*))?$)/)},
 			qos: {value: "1"},
 			name   : {value:""}
@@ -130,14 +130,14 @@
 	});
 </script>
 
-<script type="text/x-red" data-template-name="lazurite-iot-mqtt-out">
+<script type="text/x-red" data-template-name="lio-gateway-mqtt-out">
 	<div class="form-row">
 		<label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
 		<input type="text" id="node-input-name"></input>
 	</div>
 	<div class="form-row">
 		<label for="node-input-core"><i class="fa fa-diamond"></i> channel</label>
-		<input type="lazurite-iot-core" id="node-input-core"></input>
+		<input type="lio-gateway-core" id="node-input-core"></input>
 	</div>
 	<div class="form-row">
 		<label for="node-input-qos"><i class="fa fa-empire"></i> qos</label>
@@ -157,22 +157,22 @@
 
 </script>
 <script type="text/javascript">
-	RED.nodes.registerType('lazurite-iot-mqtt-out',{
-		category: 'Lazurite',
-		paletteLabel: 'LazuriteIot MQTT Out',
+	RED.nodes.registerType('lio-gateway-mqtt-out',{
+		category: 'network',
+		paletteLabel: 'LioGateway MQTT Out',
 		color:"#d8bfd8",
 		align: 'right',
 		inputs:1,
 		outputs:0,
 		icon: "bridge.svg",
 		label: function() {
-			return this.name || "LazuriteIot MQTT Out";
+			return this.name || "LioGateway MQTT Out";
 		},
 		labelStyle: function() {
 			return this.text?"node_label_italic":"";
 		},
 		defaults: {
-			core: {value:"", required:true, type:"lazurite-iot-core"},
+			core: {value:"", required:true, type:"lio-gateway-core"},
 			topic: {value:""},
 			qos: {value:""},
 			bufferenb: {value:false},
@@ -181,20 +181,20 @@
 	});
 </script>
 
-<script type="text/x-red" data-template-name="lazurite-iot-core">
+<script type="text/x-red" data-template-name="lio-gateway-core">
 	<div class="form-row">
-		<label for="node-config-input-keyPath">keyPath</label>
-		<input type="text" id="node-config-input-keyPath">
+		<label for="node-config-input-access_key">access key</label>
+		<input type="text" id="node-config-input-access_key">
 	</div>
 </script>
 <script type="text/javascript">
-	RED.nodes.registerType('lazurite-iot-core',{
+	RED.nodes.registerType('lio-gateway-core',{
 		category: 'config',
 		defaults: {
-			keyPath: {value:"",required:true},
+			access_key: {value:"",required:true},
 		},
 		label: function() {
-			return this.keyPath;
+			return this.access_key;
 		}
 	});
 </script>

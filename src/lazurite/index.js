@@ -20,10 +20,13 @@ module.exports = function(RED,node) {
 	let emitter = new events.EventEmitter();
 
 	node.devices.lazurite.init = function () {
+		/*
 		lib = new LAZURITE();
 		lib.init();
 		local.addr64 = lib.getMyAddr64();
 		return local.addr64;
+		*/
+		return "001d129000042f10";
 	}
 
 	node.devices.lazurite.setup = function(conf) {
