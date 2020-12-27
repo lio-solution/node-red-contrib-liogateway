@@ -27,13 +27,12 @@ module.exports = function(RED,node) {
 					resolve();
 				});
 				client.on('reconnect', function (e) {
-					console.log(`mqtt.reconnect`);
-					console.log(e);
+					RED.log.info(e);
 					node.mqtt.connecting = false;
 					node.mqtt.connected = true;
 				});
 				client.on('disconnect', function (packet) {
-					console.log(`mqtt.disconnect`);
+					RED.log.info(`mqtt.disconnect`);
 					node.mqtt.connected = false;
 					node.mqtt.connecting = false;
 				});
@@ -55,11 +54,10 @@ module.exports = function(RED,node) {
 					}
 				})
 				client.on('error', function (error) {
-					console.log(`mqtt.error`);
-					console.log(error);
+					RED.log.error(error);
 				});
 				client.on('close', function () {
-					console.log("mqtt.close");
+					RED.log.info("mqtt.close");
 					node.mqtt.connecting = true;
 					node.mqtt.connected = false;
 				});
@@ -71,7 +69,7 @@ module.exports = function(RED,node) {
 					}
 				});
 			} catch(e) {
-				console.log(e);
+				RED.log.error(e);
 				reject('authorization error');
 			}
 		});
@@ -87,14 +85,10 @@ module.exports = function(RED,node) {
 	};
 	node.mqtt.subscribe = function(topic,callback) {
 		client.subscribe(`${baseTopic}/${topic}`,{qos: 1},function (err) {
-			console.log(`subscribe: ${baseTopic}/${topic}`);
 			if(err) {
-				console.log(err);
-				try {
-					RED.log.warn(JSON.stringify(err,null,"  "));
-				} catch(e) {
-					RED.log.warn(err);
-				}
+				RED.log.error(err);
+			} else {
+				RED.log.info(`subscribe: ${baseTopic}/${topic}`);
 			}
 		});
 		node.mqtt.listener.push({
@@ -144,4 +138,4 @@ function matchTopic(ts,t) {
 	}
 	var re = new RegExp("^"+ts.replace(/([\[\]\?\(\)\\\\$\^\*\.|])/g,"\\$1").replace(/\+/g,"[^/]+").replace(/\/#$/,"(\/.*)?")+"$");
 			return re.test(t);
-}
+		}

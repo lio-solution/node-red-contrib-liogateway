@@ -68,8 +68,8 @@ module.exports = function(RED,node){
 				node.closing = false;
 				done();
 			}).catch((e) => {
-				console.log(e);
-				RED.log.warn((typeof e === "object") ? JSON.stringify(e,null,"  ") : e);
+				node.error((typeof e === "object") ? JSON.stringify(e,null,"  ") : e);
+				done();
 			});
 		} else {
 			done();
@@ -93,12 +93,12 @@ module.exports = function(RED,node){
 				return new Promise((resolve,reject) => {
 						node.devices.lazurite.setup(local.Keys.connect.lazurite);
 						resolve();
-				*/
+						*/
 			}).then(() => {
 				node.connecting = false;
 				node.connected = true;
 				node.mqtt.subscribe("event/dbupdate",function(topic,message){
-					console.log({
+					node.log({
 						topic:topic,
 						message: message
 					});
@@ -112,13 +112,12 @@ module.exports = function(RED,node){
 						node.users[id].registered();
 					}
 				}
-				console.log("完了しました(completed)!!");
+				node.log("完了しました(completed)!!");
 			}).catch((err) => {
-				console.log(err);
 				node.connecting = false;
 				node.connected = false;
 				if(typeof err === "object") err = JSON.stringify(err,null,"  ");
-				RED.log.warn(err);
+				node.error(err);
 				for(let id in node.users) {
 					node.users[id].status({fill:"red",shape:"ring",text:"node-red:common.status.disconnected"});
 				}
@@ -126,7 +125,7 @@ module.exports = function(RED,node){
 	}
 	function httpRequestGatewayActivate(val) {
 		return new Promise((resolve,reject) => {
-			console.log("認証情報を取得中です(getting credentials)......");
+			node.log("認証情報を取得中です(getting credentials)......");
 			for(let id in node.users) {
 				node.users[id].status({fill:"yellow",shape:"ring",text:"node-red:common.status.connecting"});
 			}
@@ -169,7 +168,7 @@ module.exports = function(RED,node){
 	}
 	function httpRequestGatewayDevices(val) {
 		return new Promise((resolve,reject) => {
-			console.log("センサーデバイス情報を取得中です。(downloading sensor device list)......");
+			node.log("センサーデバイス情報を取得中です。(downloading sensor device list)......");
 			const options = {
 				hostname: 'api.lio-solution.com',
 				port: 443,
@@ -202,7 +201,6 @@ module.exports = function(RED,node){
 			});
 			req.write(JSON.stringify({Item:local.auth}));
 			req.on('error', (e) => {
-				console.log(e);
 				reject(e);
 			});
 			req.end();
@@ -210,7 +208,7 @@ module.exports = function(RED,node){
 	}
 	function updateDatabase() {
 		return new Promise((resolve,reject) => {
-			console.log("センサーデバイス情報のデータベースが更新されました(update sensor device list)......");
+			node.log("センサーデバイス情報のデータベースが更新されました(update sensor device list)......");
 			const options = {
 				hostname: 'test2.lazurite.io',
 				port: 443,
