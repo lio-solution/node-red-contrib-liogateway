@@ -60,12 +60,15 @@ module.exports = function(RED,node){
 		}
 		delete node.sensors;
 		if(node.done.length > 0) {
-			Promise.all(node.done.map((p) => {
-				return p();
-			})).then(() => {
+			let promise = Promise.resolve();
+			for(const func of node.done) {
+				promise = promise.then(func);
+			}
+			promise.then(() => {
 				node.connecting = false;
 				node.connected = false;
 				node.closing = false;
+				RED.log.info('success of end process');
 				done();
 			}).catch((e) => {
 				node.error((typeof e === "object") ? JSON.stringify(e,null,"  ") : e);

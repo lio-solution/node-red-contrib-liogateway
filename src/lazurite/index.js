@@ -20,13 +20,11 @@ module.exports = function(RED,node) {
 	let emitter = new events.EventEmitter();
 
 	node.devices.lazurite.init = function () {
-		/*
 		lib = new LAZURITE();
 		lib.init();
 		local.addr64 = lib.getMyAddr64();
-		return local.addr64;
-		*/
-		return "001d129000042f10";
+		node.done.push(LazuriteDone);
+		return local.addr64.replace(/^0x/,"");
 	}
 
 	node.devices.lazurite.setup = function(conf) {
@@ -64,7 +62,6 @@ module.exports = function(RED,node) {
 		});
 		lib.setEnhanceAck(eack);
 		lib.on("rx",rxCallback);
-		node.done.push(done);
 	}
 	node.devices.lazurite.on = function(type,callback) {
 		emitter.on(type,callback);
@@ -119,12 +116,12 @@ module.exports = function(RED,node) {
 			}
 		}
 	}
-
-	function done() {
+	function LazuriteDone() {
 		return new Promise((resolve,reject) => {
 			lib.rxDisable();
 			lib.close();
 			lib.remove();
+			RED.log.info('removing lazdriver');
 			resolve();
 		});
 	}
