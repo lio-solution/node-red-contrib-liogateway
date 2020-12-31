@@ -81,13 +81,13 @@ module.exports = function(RED,node){
 
 	function init() {
 		new Promise((resolve,reject) => {
-			const mac64 = node.devices.lazurite.init();
-			resolve({config: { lazurite: mac64}});
+			node.auth = {
+				lazurite: node.devices.lazurite.init()
+			};
+			resolve();
 		}).then(httpRequestGatewayActivate)
-			.then((val) => {
-				return node.mqtt.auth(local.Keys).then((resolve,reject) => {
-					return Promise.resolve(val);
-				});
+			.then(() => {
+				return node.mqtt.auth(local.Keys)
 			}).then(httpRequestGatewayDevices)
 			.then(() => {
 				return Promise.resolve();
@@ -103,10 +103,10 @@ module.exports = function(RED,node){
 				node.mqtt.subscribe("event/dbupdate",function(topic,message){
 					node.log({
 						topic:topic,
-						message: message
+						message: JSON.stringify(message)
 					});
-					if(message.type === "machine") {
-						updateDatabase();
+					if(message.table === "devices") {
+						httpRequestGatewayDevices();
 					}
 				});
 				for(let id in node.users) {
@@ -126,7 +126,7 @@ module.exports = function(RED,node){
 				}
 			});
 	}
-	function httpRequestGatewayActivate(val) {
+	function httpRequestGatewayActivate() {
 		return new Promise((resolve,reject) => {
 			node.log("認証情報を取得中です(getting credentials)......");
 			for(let id in node.users) {
@@ -135,7 +135,7 @@ module.exports = function(RED,node){
 			const options = {
 				hostname: 'api.lio-solution.com',
 				port: 443,
-				path: `/gateway/activate?authMethod=lazurite&deviceId=${val.config.lazurite}`,
+				path: `/gateway/activate?authMethod=lazurite&deviceId=${node.auth.lazurite}`,
 				headers: {
 					'Content-Type': 'application/json',
 					'access_key': node.config.access_key,
@@ -150,7 +150,7 @@ module.exports = function(RED,node){
 				res.on('end',() => {
 					if(res.statusCode === 200) {
 						local.Keys = JSON.parse(Body);
-						resolve(val);
+						resolve();
 					} else {
 						reject({
 							file: module.filename.split("/").pop(),
@@ -169,13 +169,13 @@ module.exports = function(RED,node){
 			req.end();
 		});
 	}
-	function httpRequestGatewayDevices(val) {
+	function httpRequestGatewayDevices() {
 		return new Promise((resolve,reject) => {
 			node.log("センサーデバイス情報を取得中です。(downloading sensor device list)......");
 			const options = {
 				hostname: 'api.lio-solution.com',
 				port: 443,
-				path: `/gateway/devices?authMethod=lazurite&deviceId=${val.config.lazurite}`,
+				path: `/gateway/devices?authMethod=lazurite&deviceId=${node.auth.lazurite}`,
 				headers: {
 					'Content-Type': 'application/json',
 					'access_key': node.config.access_key,
@@ -188,6 +188,7 @@ module.exports = function(RED,node){
 					Body += d;
 				});
 				res.on('end',() => {
+					console.log(Body);
 					if(res.statusCode === 200) {
 						node.devices = JSON.parse(Body.toString());
 						resolve();
@@ -202,47 +203,10 @@ module.exports = function(RED,node){
 					}
 				});
 			});
-			req.write(JSON.stringify({Item:local.auth}));
 			req.on('error', (e) => {
 				reject(e);
 			});
 			req.end();
-		});
-	}
-	function updateDatabase() {
-		return new Promise((resolve,reject) => {
-			node.log("センサーデバイス情報のデータベースが更新されました(update sensor device list)......");
-			const options = {
-				hostname: 'test2.lazurite.io',
-				port: 443,
-				path: '/v2/gateway/machine',
-				headers: {
-					"lazurite-api-key": node.config.key,
-					"lazurite-api-token": node.config.token,
-					'Content-Type': 'application/json',
-				},
-				method: 'GET'
-			};
-			const req = https.request(options, (res) => {
-				let body = "";
-				res.on('data', (d) => {
-					body += d;
-				});
-				res.on('end',() => {
-					let machine = body.toString();
-					node.sensors = JSON.parse(machine.toString()).Items;
-					resolve();
-				});
-			});
-			req.on('error', (e) => {
-				reject(e);
-			});
-			req.end();
-		}).then((values) => {
-			let device = Object.keys(node.device);
-			for(let d of device) {
-				node.device[d].update();
-			}
 		});
 	}
 	function remapMachine() {
