@@ -1,7 +1,7 @@
 'use strict'
 /*
- *  Copyright (C) 2020 Lapis Semiconductor Co., Ltd.
- *  file: lazurite-iot-mqtt-in.js
+ *  Copyright (C) 2021 Naotaka Saito
+ *  file: lio-gateway-mqtt-in.js
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with

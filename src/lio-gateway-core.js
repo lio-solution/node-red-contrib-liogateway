@@ -1,7 +1,7 @@
 'use strict'
 /*
- *  Copyright (C) 2020 Lapis Semiconductor Co., Ltd.
- *  file: lazurite-iot-core.js
+ *  Copyright (C) 2021 Naotaka Saito
+ *  file: lio-gateway-core.js
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -19,14 +19,14 @@
  * limitations under the License.
  */
 
-let local = {};
 module.exports = function(RED,node){
 	//const fs = require("fs");
 	//const os = require("os");
 	const https = require("https");
-	//const util = require("util");
+	const util = require("util");
 	const mqtt = require("./mqtt");
 	const lazurite = require("./lazurite");
+	let local = {};
 	if(node.connecting === undefined) node.connecting =  false;
 	if(node.connected === undefined) node.connected =  false;
 	if(node.closing === undefined) node.closing =  false;
@@ -87,17 +87,19 @@ module.exports = function(RED,node){
 			resolve();
 		}).then(httpRequestGatewayActivate)
 			.then(() => {
-				return node.mqtt.auth(local.Keys)
+				return new Promise((resolve,reject) => {
+					try {
+						node.devices.lazurite.setup(local.connect.options.lazurite);
+						resolve();
+					} catch(e) {
+						console.log(e);
+						reject(e);
+					}
+				});
+			}).then(() => {
+				return node.mqtt.auth(local)
 			}).then(httpRequestGatewayDevices)
 			.then(() => {
-				return Promise.resolve();
-
-				/* dummy
-				return new Promise((resolve,reject) => {
-						node.devices.lazurite.setup(local.Keys.connect.lazurite);
-						resolve();
-						*/
-			}).then(() => {
 				node.connecting = false;
 				node.connected = true;
 				node.mqtt.subscribe("event/dbupdate",function(topic,message){
@@ -149,7 +151,10 @@ module.exports = function(RED,node){
 				});
 				res.on('end',() => {
 					if(res.statusCode === 200) {
-						local.Keys = JSON.parse(Body);
+						let params = JSON.parse(Body);
+						for(const key in params) {
+							local[key] = params[key];
+						}
 						resolve();
 					} else {
 						reject({
@@ -162,7 +167,6 @@ module.exports = function(RED,node){
 					}
 				});
 			});
-			req.write(JSON.stringify({Item:local.auth}));
 			req.on('error', (e) => {
 				reject(e);
 			});
@@ -188,9 +192,10 @@ module.exports = function(RED,node){
 					Body += d;
 				});
 				res.on('end',() => {
-					console.log(Body);
 					if(res.statusCode === 200) {
-						node.devices = JSON.parse(Body.toString());
+						if(!node.db) node.db = {};
+						node.db.devices = JSON.parse(Body.toString());
+						node.devices.lazurite.eack();
 						resolve();
 					} else {
 						reject({
@@ -208,8 +213,6 @@ module.exports = function(RED,node){
 			});
 			req.end();
 		});
-	}
-	function remapMachine() {
 	}
 }
 
