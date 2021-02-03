@@ -1,4 +1,5 @@
 module.exports = function(RED,node) {
+	const util = require("util");
 	const LAZURITE = require("lazurite");
 	const events = require("events");
 	const cmd = {
@@ -28,21 +29,19 @@ module.exports = function(RED,node) {
 	}
 
 	node.devices.lazurite.setup = function(conf) {
-		try {
-			if(isNaN(conf.myAddress) === false) {
-				local.addr16 = conf.myAddress || 0xFFFD;
-				lib.setMyAddress(parseInt(local.addr16));
-			}
-			local.ch = isNaN(conf.ch) ? 36 : parseInt(conf.ch);
-			local.panid = isNaN(conf.panid) ? parseInt(Math.random() * 65533) : parseInt(conf.panid);
-			local.baud = isNaN(conf.baud) ? 100 : parseInt(conf.baud);
-			local.pwr = isNaN(conf.pwr) ? 20 : parseInt(conf.pwr);
-		} catch(e) {
-			console.log(e);
+		local.addr16 = parseInt(conf.addr16);
+		if(isNaN(local.addr16)) {
+			local.addr16 = 0xFFFD;
 		}
+		lib.setMyAddress(local.addr16);
+		local.ch = isNaN(conf.ch) ? 36 : parseInt(conf.ch);
+		local.panid = isNaN(conf.panid) ? parseInt(Math.random() * 65533) : parseInt(conf.panid);
+		local.baud = isNaN(conf.baud) ? 100 : parseInt(conf.baud);
+		local.pwr = isNaN(conf.pwr) ? 20 : parseInt(conf.pwr);
 		lib.begin(local);
 		lib.on("rx",rxCallback);
 	}
+
 	node.devices.lazurite.on = function(type,callback) {
 		emitter.on(type,callback);
 	}
@@ -80,11 +79,10 @@ module.exports = function(RED,node) {
 
 	function rxCallback(msg) {
 		try {
-		if(!node.db.devices) return;
+			if(!node.db.devices) return;
 		} catch(e) {
 			return;
 		}
-		console.log(msg);
 		let payload = msg.payload.split(",");
 		if(payload[0] === 'factory-iot') {
 			let retMsg = {};
@@ -92,55 +90,87 @@ module.exports = function(RED,node) {
 			src0 = ('0000'+msg.src_addr.toString(16)).substr(-16);
 			try {
 				src1 = (msg.src_addr%65536n);
-				console.log({
-					src0: src0,
-					src1: src1
-				});
 			} catch(e) {
-				console.log(e);
+				RED.log.error(e);
 				return;
 			}
-			let db = node.db.devices.filter((elm) => {
-				console.log({
-					elm: elm,
-					deviceId: elm.deviceId.toLowerCase(),
-					src0: src0.toLowerCase()
-				});
+			let db = node.db.devices.find((elm) => {
 				return ((elm.authMethod === 'lazurite') && (src0.toLowerCase() === elm.deviceId.toLowerCase()));
 			});
 			if(db) {
-			console.log(db);
-				retMsg.payload = `activate,${local.panid},${local.addr16},${db[0].id},${db[0].thres0},${db[0].detect0},${db[0].thres1},${db[0].detect1}`;
+				retMsg.payload = `activate,${local.panid},${local.addr16},${db.id},${db.thres0},${db.detect0},${db.thres1},${db.detect1}`;
 				retMsg.dst_addr = msg.src_addr;
 				let e = eack.find((elm) => {
-					return elm.addr === db[0].id;
+					return elm.addr === db.id;
 				});
 				if(e) {
-					if(db[0].debug === true) {
+					if(db.debug === true) {
 						e.data = [cmd.FORCE_SEND,measInterval & 0x00FF, (measInterval >> 8) & 0x00FF];
-					} else if(db[0].lowFreq === true) {
+					} else if(db.lowFreq === true) {
 						e.data = [cmd.FORCE_SEND,keepAlive & 0x00FF, (keepAlive >> 8) & 0x00FF];
 					} else {
-						e.data = [cmd.NORMAL,db[0].interval & 0x00FF, (db[0].interval >> 8) & 0x00FF];
+						e.data = [cmd.NORMAL,db.interval & 0x00FF, (db.interval >> 8) & 0x00FF];
 					}
 				}
 				lib.setEnhanceAck(eack);
-				lib.send64(retMsg);
+				let ret = lib.send64(retMsg);
+			} else {
+				console.log(util.inspect({
+					rxCallback:msg
+				},{colors:true,depth:null}))
 			}
 		} else if(msg.dst_panid === local.panid){
-			let db = node.db.find((elm) => elm.id === msg.src_addr);
+			let db = node.db.devices.find((elm) => elm.id === msg.src_addr);
 			if(db) {
-				msg.db = db;
+				msg.devices = db;
 			}
 			if(payload[0] === "update"){
 				let newMsg = {
 					panid: local.panid,
 					dst_addr: msg.src_addr,
-					payload : `activate,${local.panid},${local.addr16},${db[0].id},${db[0].thres0},${db[0].detect0},${db[0].thres1},${db[0].detect1}`,
+					payload : `activate,${local.panid},${local.addr16},${db.id},${db.thres0},${db.detect0},${db.thres1},${db.detect1}`,
 				};
+				let e = eack.find((elm) => {
+					return elm.addr === msg.src_addr;
+				});
+				if(e) {
+					if(db.debug === true) {
+						e.data = [cmd.FORCE_SEND,measInterval & 0x00FF, (measInterval >> 8) & 0x00FF];
+					} else if(db.lowFreq === true) {
+						e.data = [cmd.FORCE_SEND,keepAlive & 0x00FF, (keepAlive >> 8) & 0x00FF];
+					} else {
+						e.data = [cmd.NORMAL,db.interval & 0x00FF, (db.interval >> 8) & 0x00FF];
+					}
+				}
+				lib.setEnhanceAck(eack);
 				lib.send(newMsg);
 			} else {
-				emitter.emit('rx',msg);
+				if(msg.devices.application === "other") {
+					emitter.emit('rx',msg);
+				} else {
+					let payload = msg.payload.split(",");
+					let pub = {
+						topic: `data/${msg.devices.application}/log/${msg.src_addr}`,
+						payload: {
+							timestamp: msg.rxtime,
+							state: payload[0],
+							value: Number(payload[1]),
+							vbat: Number(payload[2]),
+							rssi: msg.rssi,
+						},
+						options: {
+							qos: 1
+						}
+					}
+					if(payload[0] === 'off') {
+						if(payload[3] !== undefined) {
+							pub.payload.reasonId = parseInt(payload[3]);
+						}
+					}
+					console.log(pub);
+					node.mqtt.publish(pub,(a,b,c) => {
+					});
+				}
 			}
 		}
 	}

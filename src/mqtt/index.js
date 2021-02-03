@@ -21,46 +21,17 @@ module.exports = function(RED,node) {
 				node.mqtt.connected = false;
 				client = mqtt.connect(v.connect.broker,options);
 				client.on('connect', function () {
+					RED.log.info('mqtt.connect');
 					node.mqtt.connecting = false;
 					node.mqtt.connected = true;
-					node.done.push(MqttDone);
 					resolve();
 				});
-				client.on('reconnect', function (e) {
-					RED.log.info(e);
-					node.mqtt.connecting = false;
-					node.mqtt.connected = true;
-				});
-				client.on('disconnect', function (packet) {
-					RED.log.info(`mqtt.disconnect`);
-					node.mqtt.connected = false;
-					node.mqtt.connecting = false;
-				});
-				client.on('message', function (topic, message) {
-					// message is Buffer
-					let msg;
-					try {
-						msg = JSON.parse(message);
-					} catch(e) {
-						msg = message;
-					}
-					let t = topic.split("/");
-					t.splice(0,2);
-					t = t.join("/");
-					for(let l of node.mqtt.listener) {
-						if(matchTopic(l.topic,t) === true) {
-							l.callback(t,msg);
-						}
-					}
-				})
-				client.on('error', function (error) {
-					RED.log.error(error);
-				});
-				client.on('close', function () {
-					node.mqtt.connecting = false;
-					node.mqtt.connected = false;
-					RED.log.info("close mqtt connection");
-				});
+				client.on('reconnect',mqttOnReconnect);
+				client.on('disconnect', mqttOnDisconnect);
+				client.on('message', mqttOnMessage);
+				client.on('error', mqttOnError);
+				client.on('close', mqttOnClose);
+				node.done.push(MqttDone);
 			} catch(e) {
 				RED.log.error(e);
 				reject('authorization error');
@@ -74,6 +45,7 @@ module.exports = function(RED,node) {
 	};
 	node.mqtt.publish = function(msg,callback) {
 		let message = (typeof msg.payload === "object") ? JSON.stringify(msg.payload) : msg.payload;
+		console.log({"mqtt.options": msg.options});
 		client.publish(`${baseTopic}/${msg.topic}`,message,msg.options,callback);
 	};
 	node.mqtt.subscribe = function(topic,callback) {
@@ -117,6 +89,43 @@ module.exports = function(RED,node) {
 			}
 		});
 	};
+	function mqttOnReconnect() {
+		RED.log.info('mqtt.reconnect');
+		node.mqtt.connecting = true;
+		node.mqtt.connected = false;
+	}
+	function mqttOnDisconnect(packet) {
+		RED.log.info('mqtt.disconnect')
+		RED.log.info(packet)
+		node.mqtt.connected = false;
+		node.mqtt.connecting = false;
+	}
+	function mqttOnError(e) {
+		RED.log.info('mqtt.error');
+		RED.log.info(e);
+	}
+	function mqttOnMessage(topic,message) {
+		// message is Buffer
+		let msg;
+		try {
+			msg = JSON.parse(message);
+		} catch(e) {
+			msg = message;
+		}
+		let t = topic.split("/");
+		t.splice(0,2);
+		t = t.join("/");
+		for(let l of node.mqtt.listener) {
+			if(matchTopic(l.topic,t) === true) {
+				l.callback(t,msg);
+			}
+		}
+	}
+	function mqttOnClose() {
+		node.mqtt.connecting = false;
+		node.mqtt.connected = false;
+		RED.log.info("mqtt.close");
+	}
 }
 
 function matchTopic(ts,t) {

@@ -92,7 +92,7 @@ module.exports = function(RED,node){
 						node.devices.lazurite.setup(local.connect.options.lazurite);
 						resolve();
 					} catch(e) {
-						console.log(e);
+						RED.log.error(e);
 						reject(e);
 					}
 				});
@@ -108,7 +108,10 @@ module.exports = function(RED,node){
 						message: JSON.stringify(message)
 					});
 					if(message.table === "devices") {
-						httpRequestGatewayDevices();
+						httpRequestGatewayDevices()
+							.then(() => {
+								node.log("完了しました(completed)!!");
+							});
 					}
 				});
 				for(let id in node.users) {
