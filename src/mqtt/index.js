@@ -21,7 +21,6 @@ module.exports = function(RED,node) {
 				node.mqtt.connected = false;
 				client = mqtt.connect(v.connect.broker,options);
 				client.on('connect', function () {
-					RED.log.info('mqtt.connect');
 					node.mqtt.connecting = false;
 					node.mqtt.connected = true;
 					resolve();
@@ -45,7 +44,6 @@ module.exports = function(RED,node) {
 	};
 	node.mqtt.publish = function(msg,callback) {
 		let message = (typeof msg.payload === "object") ? JSON.stringify(msg.payload) : msg.payload;
-		console.log({"mqtt.options": msg.options});
 		client.publish(`${baseTopic}/${msg.topic}`,message,msg.options,callback);
 	};
 	node.mqtt.subscribe = function(topic,callback) {
@@ -62,15 +60,22 @@ module.exports = function(RED,node) {
 		});
 	};
 	node.mqtt.listener = [];
-	function MqttDone() {
+	node.mqtt.reconnect = function() {
+		for(let lis of node.mqtt.listener) {
+		client.subscribe(`${baseTopic}/${lis.topic}`,{qos: 1},function (err) {
+			if(err) {
+				RED.log.error(err);
+			} else {
+				RED.log.info(`subscribe: ${baseTopic}/${lis.topic}`);
+			}
+		});
+		}
+	}
+	node.mqtt.close = function() {
 		return new Promise((resolve,reject) => {
 			client.on('end', () => {
 				node.mqtt.connecting = false;
 				node.mqtt.connected = false;
-				for(const id in node.mqtt.listeners) {
-					node.mqtt.listeners[id].status({fill:"red",shape:"ring",text:"node-red:common.status.disconnected"});
-				}
-				RED.log.info("end of mqtt connection");
 				resolve();
 			});
 			if (node.mqtt.connected) {
@@ -79,23 +84,41 @@ module.exports = function(RED,node) {
 					node.mqtt.publish(node.mqtt.closeMessage);
 				}
 				client.end();
-				RED.log.info('closing mqtt connection');
 			} else if (node.mqtt.connecting) {
-				RED.log.info('closing mqtt connection');
 				client.end();
 			} else {
-				RED.log.info('close mqtt connection');
+				resolve();
+			}
+		});
+	}
+	function MqttDone() {
+		return new Promise((resolve,reject) => {
+			client.on('end', () => {
+				node.mqtt.connecting = false;
+				node.mqtt.connected = false;
+				for(const id in node.mqtt.listeners) {
+					node.mqtt.listeners[id].status({fill:"red",shape:"ring",text:"node-red:common.status.disconnected"});
+				}
+				resolve();
+			});
+			if (node.mqtt.connected) {
+				// Send close message
+				if (node.mqtt.closeMessage) {
+					node.mqtt.publish(node.mqtt.closeMessage);
+				}
+				client.end();
+			} else if (node.mqtt.connecting) {
+				client.end();
+			} else {
 				resolve();
 			}
 		});
 	};
 	function mqttOnReconnect() {
-		RED.log.info('mqtt.reconnect');
 		node.mqtt.connecting = true;
 		node.mqtt.connected = false;
 	}
 	function mqttOnDisconnect(packet) {
-		RED.log.info('mqtt.disconnect')
 		RED.log.info(packet)
 		node.mqtt.connected = false;
 		node.mqtt.connecting = false;
@@ -124,7 +147,6 @@ module.exports = function(RED,node) {
 	function mqttOnClose() {
 		node.mqtt.connecting = false;
 		node.mqtt.connected = false;
-		RED.log.info("mqtt.close");
 	}
 }
 

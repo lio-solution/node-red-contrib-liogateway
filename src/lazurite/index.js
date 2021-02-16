@@ -16,7 +16,9 @@ module.exports = function(RED,node) {
 		node.devices.lazurite = {};
 	}
 	let lib;							// node lazurite
-	let local = { };
+	let local = {
+		isOpen:false,
+	};
 	let eack;
 	let emitter = new events.EventEmitter();
 
@@ -29,6 +31,9 @@ module.exports = function(RED,node) {
 	}
 
 	node.devices.lazurite.setup = function(conf) {
+		if(local.isOpen === true) {
+			lib.close();
+		}
 		local.addr16 = parseInt(conf.addr16);
 		if(isNaN(local.addr16)) {
 			local.addr16 = 0xFFFD;
@@ -40,6 +45,7 @@ module.exports = function(RED,node) {
 		local.pwr = isNaN(conf.pwr) ? 20 : parseInt(conf.pwr);
 		lib.begin(local);
 		lib.on("rx",rxCallback);
+		local.isOpen = true;
 	}
 
 	node.devices.lazurite.on = function(type,callback) {
@@ -75,6 +81,11 @@ module.exports = function(RED,node) {
 		});
 		lib.setEnhanceAck(eack);
 		lib.rxEnable();
+	}
+	node.devices.lazurite.close = function() {
+		lib.rxDisable();
+		lib.close();
+		local.isOpen = false;
 	}
 
 	function rxCallback(msg) {
@@ -167,7 +178,6 @@ module.exports = function(RED,node) {
 							pub.payload.reasonId = parseInt(payload[3]);
 						}
 					}
-					console.log(pub);
 					node.mqtt.publish(pub,(a,b,c) => {
 					});
 				}
@@ -176,6 +186,7 @@ module.exports = function(RED,node) {
 	}
 	function LazuriteDone() {
 		return new Promise((resolve,reject) => {
+			local.isOpen = false;
 			lib.rxDisable();
 			lib.close();
 			lib.remove();

@@ -68,7 +68,6 @@ module.exports = function(RED,node){
 				node.connecting = false;
 				node.connected = false;
 				node.closing = false;
-				RED.log.info('success of end process');
 				done();
 			}).catch((e) => {
 				node.error((typeof e === "object") ? JSON.stringify(e,null,"  ") : e);
@@ -102,23 +101,51 @@ module.exports = function(RED,node){
 			.then(() => {
 				node.connecting = false;
 				node.connected = true;
-				node.mqtt.subscribe("event/dbupdate",function(topic,message){
-					node.log({
-						topic:topic,
-						message: JSON.stringify(message)
-					});
-					if(message.table === "devices") {
-						httpRequestGatewayDevices()
-							.then(() => {
-								node.log("完了しました(completed)!!");
-							});
-					}
-				});
+				node.mqtt.subscribe("event/dbupdate",dbUpdate);
 				for(let id in node.users) {
 					node.users[id].status({fill:"green",shape:"dot",text:"node-red:common.status.connected"});
 					if(node.users[id].registered) {
 						node.users[id].registered();
 					}
+				}
+				node.log("完了しました(completed)!!");
+			}).catch((err) => {
+				node.connecting = false;
+				node.connected = false;
+				if(typeof err === "object") err = JSON.stringify(err,null,"  ");
+				node.error(err);
+				for(let id in node.users) {
+					node.users[id].status({fill:"red",shape:"ring",text:"node-red:common.status.disconnected"});
+				}
+			});
+	}
+	function dbUpdate() {
+		node.log("db update");
+		for(let id in node.users) {
+			node.users[id].status({fill:"yellow",shape:"ring",text:"node-red:common.status.connecting"});
+		}
+		node.devices.lazurite.close();
+		node.mqtt.close()
+			.then(httpRequestGatewayActivate)
+			.then(() => {
+				return new Promise((resolve,reject) => {
+					try {
+						node.devices.lazurite.setup(local.connect.options.lazurite);
+						resolve();
+					} catch(e) {
+						RED.log.error(e);
+						reject(e);
+					}
+				});
+			}).then(() => {
+				return node.mqtt.auth(local)
+			}).then(httpRequestGatewayDevices)
+			.then(() => {
+				node.connecting = false;
+				node.connected = true;
+				node.mqtt.reconnect();
+				for(let id in node.users) {
+					node.users[id].status({fill:"green",shape:"dot",text:"node-red:common.status.connected"});
 				}
 				node.log("完了しました(completed)!!");
 			}).catch((err) => {
